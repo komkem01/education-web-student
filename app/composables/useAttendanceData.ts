@@ -1,8 +1,10 @@
 import { ref, computed } from 'vue'
+import { ensureStudentSession } from './useStudentSession'
 
 export type AttendanceStatus = 'มา' | 'ขาด' | 'สาย' | 'ลา' | 'ป่วย'
 
 export interface AttendanceRecord {
+  id?: string
   date: string
   dayTh: string
   status: AttendanceStatus
@@ -32,13 +34,54 @@ function buildMonth(year: number, month: number): AttendanceRecord[] {
 }
 
 export function useAttendanceData() {
-  const records = ref<AttendanceRecord[]>([
-    ...buildMonth(2025, 5), // May 2568
-    ...buildMonth(2025, 6), // Jun
-    ...buildMonth(2025, 7), // Jul
-    ...buildMonth(2025, 8), // Aug
-    ...buildMonth(2025, 9), // Sep
-  ])
+  const records = ref<AttendanceRecord[]>([])
+
+  const dayNames = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
+
+  function toThaiDate(value: Date) {
+    const d = String(value.getDate()).padStart(2, '0')
+    const m = String(value.getMonth() + 1).padStart(2, '0')
+    const y = String(value.getFullYear() + 543)
+    return `${d}/${m}/${y}`
+  }
+
+  function toThaiStatus(status: string): AttendanceStatus {
+    if (status === 'absent') return 'ขาด'
+    if (status === 'late') return 'สาย'
+    if (status === 'sick') return 'ป่วย'
+    if (status === 'business') return 'ลา'
+    return 'มา'
+  }
+
+  if (import.meta.client) {
+    ensureStudentSession().then(async (session) => {
+      if (!session?.student) return
+      const token = useCookie<string | null>('edu_student_token')
+      if (!token.value) return
+      const config = useRuntimeConfig()
+
+      const res = await $fetch<{ data: Array<{ id: string; check_date: string | null; created_at: string; status: string; note: string | null }> }>(
+        `${config.public.apiBase}/students/${session.student.id}/attendance-logs`,
+        { headers: { Authorization: `Bearer ${token.value}` } },
+      )
+
+      records.value = (res.data || []).map((item) => {
+        const baseDate = item.check_date ? new Date(item.check_date) : new Date(item.created_at)
+        return {
+          id: item.id,
+          date: toThaiDate(baseDate),
+          dayTh: dayNames[baseDate.getDay()] || '-',
+          status: toThaiStatus(item.status),
+          note: item.note || undefined,
+        }
+      })
+    }).catch(() => {
+      records.value = [
+        ...buildMonth(2025, 5),
+        ...buildMonth(2025, 6),
+      ]
+    })
+  }
 
   const totalDays = computed(() => records.value.length)
   const presentDays = computed(() => records.value.filter(r => r.status === 'มา').length)

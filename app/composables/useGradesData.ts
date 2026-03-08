@@ -1,4 +1,5 @@
 import { ref, computed } from 'vue'
+import { ensureStudentSession } from './useStudentSession'
 
 export type GradeValue = 4 | 3.5 | 3 | 2.5 | 2 | 1.5 | 1 | 0 | 'ร' | 'มส' | 'มผ' | '-'
 
@@ -26,44 +27,71 @@ export interface Semester {
 }
 
 const semesters: Semester[] = [
-  { id: '2568-1', academicYear: '2568', term: 1, label: 'ปีการศึกษา 2568 เทอม 1' },
-  { id: '2567-2', academicYear: '2567', term: 2, label: 'ปีการศึกษา 2567 เทอม 2' },
-  { id: '2567-1', academicYear: '2567', term: 1, label: 'ปีการศึกษา 2567 เทอม 1' },
+  { id: 'current', academicYear: String(new Date().getFullYear() + 543), term: 1, label: `ปีการศึกษา ${new Date().getFullYear() + 543}` },
 ]
 
-const gradesBySemester: Record<string, SubjectGrade[]> = {
-  '2568-1': [
-    { id: '1', subjectCode: 'T101', subjectName: 'ภาษาไทย', credits: 1.5, hours: 60, midterm: 28, final: 32, attendance: 18, behavior: 10, total: 88, grade: 3.5, status: 'ผ่าน', teacher: 'อ.สมหญิง' },
-    { id: '2', subjectCode: 'M101', subjectName: 'คณิตศาสตร์พื้นฐาน', credits: 1.5, hours: 60, midterm: 22, final: 25, attendance: 18, behavior: 10, total: 75, grade: 3, status: 'ผ่าน', teacher: 'อ.สมศักดิ์' },
-    { id: '3', subjectCode: 'S101', subjectName: 'วิทยาศาสตร์', credits: 1.5, hours: 60, midterm: 18, final: 21, attendance: 16, behavior: 9, total: 64, grade: 2, status: 'ผ่าน', teacher: 'อ.สมชาย' },
-    { id: '4', subjectCode: 'SS101', subjectName: 'สังคมศึกษา', credits: 1, hours: 40, midterm: 25, final: 29, attendance: 18, behavior: 10, total: 82, grade: 3.5, status: 'ผ่าน', teacher: 'อ.สมใจ' },
-    { id: '5', subjectCode: 'E101', subjectName: 'ภาษาอังกฤษ', credits: 1.5, hours: 60, midterm: 30, final: 35, attendance: 18, behavior: 10, total: 93, grade: 4, status: 'ผ่าน', teacher: 'อ.สมัคร' },
-    { id: '6', subjectCode: 'HI101', subjectName: 'ประวัติศาสตร์', credits: 0.5, hours: 20, midterm: 14, final: 15, attendance: 9, behavior: 5, total: 43, grade: 1.5, status: 'ผ่าน', teacher: 'อ.สมนึก' },
-    { id: '7', subjectCode: 'PE101', subjectName: 'พลศึกษา', credits: 1, hours: 40, midterm: null, final: null, attendance: null, behavior: null, total: null, grade: '-', status: 'รอผล', teacher: 'อ.สมาน' },
-    { id: '8', subjectCode: 'AR101', subjectName: 'ศิลปะ', credits: 0.5, hours: 20, midterm: null, final: null, attendance: null, behavior: null, total: null, grade: '-', status: 'รอผล', teacher: 'อ.สมศิลป์' },
-    { id: '9', subjectCode: 'MU101', subjectName: 'ดนตรี-นาฏศิลป์', credits: 0.5, hours: 20, midterm: null, final: null, attendance: null, behavior: null, total: null, grade: '-', status: 'รอผล', teacher: 'อ.สมเสียง' },
-    { id: '10', subjectCode: 'CA101', subjectName: 'การงานอาชีพ', credits: 1, hours: 40, midterm: null, final: null, attendance: null, behavior: null, total: null, grade: '-', status: 'รอผล', teacher: 'อ.สมหวัง' },
-    { id: '11', subjectCode: 'COM101', subjectName: 'เทคโนโลยี (คอมพิวเตอร์)', credits: 0.5, hours: 20, midterm: null, final: null, attendance: null, behavior: null, total: null, grade: '-', status: 'รอผล', teacher: 'อ.สมคิด' },
-    { id: '12', subjectCode: 'GD101', subjectName: 'แนะแนว', credits: 0, hours: 20, midterm: null, final: null, attendance: null, behavior: null, total: null, grade: '-', status: 'รอผล', teacher: 'อ.สมใจ' },
-  ],
-  '2567-2': [
-    { id: '1', subjectCode: 'T102', subjectName: 'ภาษาไทย 2', credits: 1.5, hours: 60, midterm: 26, final: 30, attendance: 17, behavior: 10, total: 83, grade: 3.5, status: 'ผ่าน', teacher: 'อ.สมหญิง' },
-    { id: '2', subjectCode: 'M102', subjectName: 'คณิตศาสตร์ 2', credits: 1.5, hours: 60, midterm: 20, final: 22, attendance: 16, behavior: 9, total: 67, grade: 2.5, status: 'ผ่าน', teacher: 'อ.สมศักดิ์' },
-    { id: '3', subjectCode: 'S102', subjectName: 'วิทยาศาสตร์ 2', credits: 1.5, hours: 60, midterm: 15, final: 18, attendance: 15, behavior: 8, total: 56, grade: 1.5, status: 'ผ่าน', teacher: 'อ.สมชาย' },
-    { id: '4', subjectCode: 'E102', subjectName: 'ภาษาอังกฤษ 2', credits: 1.5, hours: 60, midterm: 28, final: 32, attendance: 18, behavior: 10, total: 88, grade: 3.5, status: 'ผ่าน', teacher: 'อ.สมัคร' },
-    { id: '5', subjectCode: 'SS102', subjectName: 'หน้าที่พลเมือง', credits: 0.5, hours: 20, midterm: 18, final: 20, attendance: 9, behavior: 5, total: 52, grade: 2, status: 'ผ่าน', teacher: 'อ.สมใจ' },
-    { id: '6', subjectCode: 'GE101', subjectName: 'ภูมิศาสตร์', credits: 0.5, hours: 20, midterm: 8, final: 10, attendance: 8, behavior: 4, total: 30, grade: 1, status: 'ผ่าน', teacher: 'อ.สมศาสตร์' },
-  ],
-  '2567-1': [
-    { id: '1', subjectCode: 'T201', subjectName: 'ภาษาไทย ม.2/1', credits: 1.5, hours: 60, midterm: 30, final: 35, attendance: 18, behavior: 10, total: 93, grade: 4, status: 'ผ่าน', teacher: 'อ.สมหญิง' },
-    { id: '2', subjectCode: 'M201', subjectName: 'คณิตศาสตร์ ม.2/1', credits: 1.5, hours: 60, midterm: 24, final: 28, attendance: 17, behavior: 9, total: 78, grade: 3, status: 'ผ่าน', teacher: 'อ.สมศักดิ์' },
-    { id: '3', subjectCode: 'E201', subjectName: 'ภาษาอังกฤษ ม.2/1', credits: 1.5, hours: 60, midterm: 32, final: 36, attendance: 18, behavior: 10, total: 96, grade: 4, status: 'ผ่าน', teacher: 'อ.สมัคร' },
-    { id: '4', subjectCode: 'S201', subjectName: 'วิทยาศาสตร์ ม.2/1', credits: 1.5, hours: 60, midterm: 12, final: 14, attendance: 14, behavior: 7, total: 47, grade: 1, status: 'ผ่าน', teacher: 'อ.สมชาย' },
-  ],
+const gradesBySemester = ref<Record<string, SubjectGrade[]>>({ current: [] })
+
+function toGrade(score: number | null): GradeValue {
+  if (score === null) return '-'
+  if (score >= 80) return 4
+  if (score >= 75) return 3.5
+  if (score >= 70) return 3
+  if (score >= 65) return 2.5
+  if (score >= 60) return 2
+  if (score >= 55) return 1.5
+  if (score >= 50) return 1
+  return 0
 }
 
 export function useGradesData() {
-  const selectedSemesterId = ref('2568-1')
+  const selectedSemesterId = ref('current')
+
+  if (import.meta.client) {
+    ensureStudentSession().then(async (session) => {
+      if (!session?.student) return
+
+      const token = useCookie<string | null>('edu_student_token')
+      if (!token.value) return
+      const config = useRuntimeConfig()
+      const headers = { Authorization: `Bearer ${token.value}` }
+
+      const [gradeRecordsRes, gradeItemsRes] = await Promise.all([
+        $fetch<{ data: Array<{ id: string; grade_item_id: string; score: number | null }> }>(`${config.public.apiBase}/students/${session.student.id}/grade-records`, { headers }),
+        $fetch<{ data: Array<{ id: string; name: string | null; max_score: number | null }> }>(`${config.public.apiBase}/students/${session.student.id}/grade-items`, { headers }),
+      ])
+
+      const itemByID: Record<string, { name: string | null; max_score: number | null }> = {}
+      for (const item of (gradeItemsRes.data || [])) {
+        itemByID[item.id] = { name: item.name, max_score: item.max_score }
+      }
+
+      gradesBySemester.value.current = (gradeRecordsRes.data || []).map((record, idx) => {
+        const gradeItem = itemByID[record.grade_item_id]
+        const score = record.score
+        const grade = toGrade(score)
+        const pass = typeof grade === 'number' ? grade >= 1 : false
+
+        return {
+          id: record.id,
+          subjectCode: `SUB-${idx + 1}`,
+          subjectName: gradeItem?.name?.trim() || `รายวิชา ${idx + 1}`,
+          credits: 1,
+          hours: 0,
+          midterm: null,
+          final: null,
+          attendance: null,
+          behavior: null,
+          total: score,
+          grade,
+          status: score === null ? 'รอผล' : (pass ? 'ผ่าน' : 'ไม่ผ่าน'),
+          teacher: '-',
+        }
+      })
+    }).catch(() => {
+      gradesBySemester.value.current = []
+    })
+  }
 
   const currentGrades = computed(() => gradesBySemester[selectedSemesterId.value] ?? [])
 

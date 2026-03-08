@@ -86,14 +86,13 @@
         <p class="hint-text">ลืมรหัสผ่าน? ติดต่อฝ่ายทะเบียนของโรงเรียน</p>
       </div>
 
-      <p class="footer-text">EduFlow © 2568 · โรงเรียนตัวอย่างวิทยา</p>
+      <p class="footer-text">EduFlow © {{ new Date().getFullYear() }}</p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
 
 type LoginResponse = {
   data: {
@@ -113,7 +112,6 @@ type SwitchRoleResponse = {
 
 definePageMeta({ layout: 'default' })
 
-const router = useRouter()
 const authToken = useCookie<string | null>('edu_student_token')
 const activeRole = useCookie<string | null>('edu_active_role')
 const showPassword = ref(false)
@@ -122,10 +120,6 @@ const errorMsg = ref('')
 const config = useRuntimeConfig()
 
 const form = reactive({ email: '', password: '' })
-
-if (authToken.value && activeRole.value === 'student') {
-  await router.push('/home')
-}
 
 async function handleLogin() {
   errorMsg.value = ''
@@ -166,7 +160,7 @@ async function handleLogin() {
 
     authToken.value = accessToken
     activeRole.value = 'student'
-    await router.push('/home')
+    await navigateTo('/home')
   }
   catch (err: any) {
     if (err?.statusCode === 401) {

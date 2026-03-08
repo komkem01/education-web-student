@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { ensureStudentSession } from './useStudentSession'
 
 export interface StudentProfile {
   studentId: string
@@ -35,34 +36,56 @@ export interface StudentProfile {
 
 export function useStudentProfile() {
   const profile = ref<StudentProfile>({
-    studentId: 'STD68-0001',
-    prefixTh: 'เด็กชาย',
-    firstName: 'ณัฐพงศ์',
-    lastName: 'สุขสวัสดิ์',
-    nickName: 'เฟริส์ท',
-    dob: '15/03/2554',
-    gender: 'ชาย',
-    bloodType: 'O',
-    idCard: '1-1001-00001-01-1',
-    religion: 'พุทธ',
-    nationality: 'ไทย',
-    email: 'nattapong.s@student.school.ac.th',
-    phone: '081-000-1234',
-    address: '99/1 ถ.ลาดพร้าว แขวงลาดพร้าว เขตลาดพร้าว กรุงเทพฯ 10230',
-    grade: 'มัธยมศึกษาปีที่ 3',
-    classroom: 'ม.3/2',
-    classNumber: 7,
-    academicYear: '2568',
-    advisorName: 'นางสาวสมใจ รักษ์งาน',
+    studentId: '-',
+    prefixTh: '',
+    firstName: '-',
+    lastName: '',
+    nickName: '-',
+    dob: '-',
+    gender: '-',
+    bloodType: '-',
+    idCard: '-',
+    religion: '-',
+    nationality: '-',
+    email: '-',
+    phone: '-',
+    address: '-',
+    grade: '-',
+    classroom: '-',
+    classNumber: 0,
+    academicYear: String(new Date().getFullYear() + 543),
+    advisorName: '-',
     status: 'กำลังศึกษา',
-    enrollDate: '15/05/2564',
-    fatherName: 'นายวิชัย สุขสวัสดิ์',
-    fatherPhone: '081-111-2222',
-    motherName: 'นางสมใจ สุขสวัสดิ์',
-    motherPhone: '081-333-4444',
-    emergencyContact: 'นายวิชัย สุขสวัสดิ์ (บิดา)',
-    emergencyPhone: '081-111-2222',
+    enrollDate: '-',
+    fatherName: '-',
+    fatherPhone: '-',
+    motherName: '-',
+    motherPhone: '-',
+    emergencyContact: '-',
+    emergencyPhone: '-',
   })
+
+  if (import.meta.client) {
+    ensureStudentSession().then((session) => {
+      if (!session || !session.student) return
+      const student = session.student
+
+      profile.value = {
+        ...profile.value,
+        studentId: student.student_code?.trim() || student.id,
+        firstName: student.first_name?.trim() || '-',
+        lastName: student.last_name?.trim() || '',
+        email: `${session.memberId}@student.local`,
+        phone: student.phone?.trim() || '-',
+        idCard: student.citizen_id?.trim() || '-',
+        classroom: student.current_classroom_id?.trim() || '-',
+        classNumber: student.default_student_no || 0,
+        status: student.is_active ? 'กำลังศึกษา' : 'ไม่ใช้งาน',
+      }
+    }).catch(() => {
+      // Keep fallback values when API is unavailable.
+    })
+  }
 
   return { profile }
 }

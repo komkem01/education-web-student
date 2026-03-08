@@ -1,4 +1,7 @@
-export default defineNuxtRouteMiddleware((to) => {
+export default defineNuxtRouteMiddleware(async (to) => {
+  // Skip non-page paths (assets/files) to avoid unnecessary auth redirects.
+  if (to.path.startsWith('/_nuxt/') || to.path.includes('.')) return
+
   const authToken = useCookie<string | null>('edu_student_token')
   const activeRole = useCookie<string | null>('edu_active_role')
   const config = useRuntimeConfig()
@@ -30,19 +33,17 @@ export default defineNuxtRouteMiddleware((to) => {
     return navigateTo('/login')
   }
 
-  if (isValidSession) {
-    return verifySession().then((ok) => {
-      if (!ok) {
-        authToken.value = null
-        activeRole.value = null
-        return navigateTo('/login')
-      }
-
-      if (isPublic) {
-        return navigateTo('/home')
-      }
-    })
+  if (!isValidSession) {
+    return
   }
 
-  if (isValidSession && isPublic) return navigateTo('/home')
+  const ok = await verifySession()
+  if (!ok) {
+    authToken.value = null
+    activeRole.value = null
+    if (!isPublic) return navigateTo('/login')
+    return
+  }
+
+  if (isPublic) return navigateTo('/home')
 })
