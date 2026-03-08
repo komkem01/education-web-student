@@ -10,18 +10,6 @@
       </div>
     </div>
 
-    <div class="api-session">
-      <div class="api-session-title">ข้อมูลผู้ใช้จาก API</div>
-      <p v-if="mePending" class="api-session-text">กำลังโหลดข้อมูล...</p>
-      <p v-else-if="meError" class="api-session-text api-session-error">ไม่สามารถดึงข้อมูลจาก /auth/me ได้</p>
-      <p v-else class="api-session-text">
-        member: <strong>{{ meData?.member_id }}</strong>
-        · role: <strong>{{ meData?.role }}</strong>
-        · school: <strong>{{ meData?.school_id }}</strong>
-        · หมดอายุ: <strong>{{ meData?.expires_at }}</strong>
-      </p>
-    </div>
-
     <!-- Stats row -->
     <div class="stats-row">
       <NuxtLink to="/attendance" class="stat-card stat-card--blue">
@@ -152,25 +140,11 @@ import { useAttendanceData } from '../composables/useAttendanceData'
 import { useNotificationsData } from '../composables/useNotificationsData'
 
 const router = useRouter()
-const config = useRuntimeConfig()
-const authToken = useCookie<string | null>('edu_student_token')
 const { profile } = useStudentProfile()
 const { schedule } = useScheduleData()
 const { currentGrades, gpa, totalCredits, gradeColor } = useGradesData()
 const { attendancePercent } = useAttendanceData()
 const { notifications } = useNotificationsData()
-
-const { data: meResponse, pending: mePending, error: meError } = useAsyncData(
-  'student-auth-me',
-  () => $fetch<{ data: { member_id: string; school_id: string; role: string; expires_at: string } }>(`${config.public.apiBase}/auth/me`, {
-    headers: {
-      Authorization: `Bearer ${authToken.value}`,
-    },
-  }),
-  { server: false },
-)
-
-const meData = computed(() => meResponse.value?.data)
 
 // Today's schedule (show Wednesday as demo)
 const dayMap: Record<number, string> = { 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri' }
@@ -212,11 +186,6 @@ function goToNotification(id: string) {
   flex-direction: column;
   gap: 20px;
 }
-
-.api-session { background: #ecfeff; border: 1px solid #a5f3fc; border-radius: 12px; padding: 10px 12px; }
-.api-session-title { font-size: 0.76rem; font-weight: 700; color: #155e75; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.03em; }
-.api-session-text { margin: 0; font-size: 0.8rem; color: #0e7490; line-height: 1.4; }
-.api-session-error { color: #b91c1c; }
 
 /* Welcome */
 .welcome-section {
