@@ -23,12 +23,12 @@
         <div class="card-header">
           <div class="role-badge">🎓 สำหรับนักเรียน</div>
           <h2 class="card-title">เข้าสู่ระบบ</h2>
-          <p class="card-desc">กรอกรหัสนักเรียนและรหัสผ่านเพื่อเข้าใช้งาน</p>
+          <p class="card-desc">กรอกอีเมลและรหัสผ่านเพื่อเข้าใช้งาน</p>
         </div>
 
         <form class="login-form" @submit.prevent="handleLogin">
           <div class="field">
-            <label class="field-label">รหัสนักเรียน</label>
+            <label class="field-label">อีเมล</label>
             <div class="input-wrap">
               <span class="input-icon">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -37,12 +37,12 @@
                 </svg>
               </span>
               <input
-                v-model="form.studentId"
-                type="text"
+                v-model="form.email"
+                type="email"
                 class="input"
-                placeholder="เช่น STD68-0001"
+                placeholder="เช่น student@school.ac.th"
                 autocomplete="username"
-                inputmode="text"
+                inputmode="email"
               />
             </div>
           </div>
@@ -95,6 +95,22 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 
+type LoginResponse = {
+  data: {
+    access_token: string
+    member: {
+      role: string
+      roles: string[]
+    }
+  }
+}
+
+type SwitchRoleResponse = {
+  data: {
+    access_token: string
+  }
+}
+
 definePageMeta({ layout: 'default' })
 
 const router = useRouter()
@@ -103,8 +119,9 @@ const activeRole = useCookie<string | null>('edu_active_role')
 const showPassword = ref(false)
 const loading = ref(false)
 const errorMsg = ref('')
+const config = useRuntimeConfig()
 
-const form = reactive({ studentId: '', password: '' })
+const form = reactive({ email: '', password: '' })
 
 if (authToken.value && activeRole.value === 'student') {
   await router.push('/home')
@@ -112,17 +129,55 @@ if (authToken.value && activeRole.value === 'student') {
 
 async function handleLogin() {
   errorMsg.value = ''
-  if (!form.studentId.trim() || !form.password.trim()) {
-    errorMsg.value = 'กรุณากรอกรหัสนักเรียนและรหัสผ่าน'
+  if (!form.email.trim() || !form.password.trim()) {
+    errorMsg.value = 'กรุณากรอกอีเมลและรหัสผ่าน'
     return
   }
+
   loading.value = true
-  await new Promise(r => setTimeout(r, 900))
-  loading.value = false
-  // mock: any credential -> success
-  authToken.value = 'demo-student-token'
-  activeRole.value = 'student'
-  router.push('/home')
+  try {
+    const loginRes = await $fetch<LoginResponse>(`${config.public.apiBase}/auth/login`, {
+      method: 'POST',
+      body: {
+        email: form.email.trim(),
+        password: form.password,
+      },
+    })
+
+    let accessToken = loginRes.data.access_token
+    const primaryRole = loginRes.data.member.role
+    const allRoles = loginRes.data.member.roles ?? []
+
+    if (primaryRole !== 'student') {
+      if (!allRoles.includes('student')) {
+        errorMsg.value = 'บัญชีนี้ไม่มีสิทธิ์เข้าใช้งานพอร์ทัลนักเรียน'
+        return
+      }
+
+      const switchRes = await $fetch<SwitchRoleResponse>(`${config.public.apiBase}/auth/switch-role`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: { role: 'student' },
+      })
+      accessToken = switchRes.data.access_token
+    }
+
+    authToken.value = accessToken
+    activeRole.value = 'student'
+    await router.push('/home')
+  }
+  catch (err: any) {
+    if (err?.statusCode === 401) {
+      errorMsg.value = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'
+      return
+    }
+    errorMsg.value = 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง'
+  }
+  finally {
+    loading.value = false
+  }
 }
 </script>
 
