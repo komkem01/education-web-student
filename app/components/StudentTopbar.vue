@@ -50,6 +50,8 @@ import { useRouter } from 'vue-router'
 import { useNotificationsData } from '../composables/useNotificationsData'
 
 const router = useRouter()
+const authToken = useCookie<string | null>('edu_student_token')
+const activeRole = useCookie<string | null>('edu_active_role')
 const { notifications } = useNotificationsData()
 const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
 const showLogoutModal = ref(false)
@@ -59,6 +61,8 @@ function closeLogoutModal() {
 }
 
 function confirmLogout() {
+  authToken.value = null
+  activeRole.value = null
   closeLogoutModal()
   router.push('/login')
 }

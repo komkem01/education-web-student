@@ -18,7 +18,9 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
-const isLoggedIn = computed(() => route.path !== '/login' && route.path !== '/')
+const authToken = useCookie<string | null>('edu_student_token')
+const isPublicRoute = computed(() => route.path === '/login' || route.path === '/')
+const isLoggedIn = computed(() => Boolean(authToken.value) && !isPublicRoute.value)
 </script>
 
 <style>

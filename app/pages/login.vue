@@ -98,11 +98,17 @@ import { useRouter } from 'vue-router'
 definePageMeta({ layout: 'default' })
 
 const router = useRouter()
+const authToken = useCookie<string | null>('edu_student_token')
+const activeRole = useCookie<string | null>('edu_active_role')
 const showPassword = ref(false)
 const loading = ref(false)
 const errorMsg = ref('')
 
 const form = reactive({ studentId: '', password: '' })
+
+if (authToken.value && activeRole.value === 'student') {
+  await router.push('/home')
+}
 
 async function handleLogin() {
   errorMsg.value = ''
@@ -113,7 +119,9 @@ async function handleLogin() {
   loading.value = true
   await new Promise(r => setTimeout(r, 900))
   loading.value = false
-  // mock: any credential → success
+  // mock: any credential -> success
+  authToken.value = 'demo-student-token'
+  activeRole.value = 'student'
   router.push('/home')
 }
 </script>

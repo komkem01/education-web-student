@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="EduFlow Student favicon">
+  <defs>
+    <linearGradient id="student-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f766e" />
+      <stop offset="100%" stop-color="#0ea5e9" />
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="14" fill="url(#student-bg)" />
+  <path d="M32 16l21 10-21 10-21-10 21-10z" fill="#ecfeff" />
+  <path d="M20 33.5v7c0 4.5 24 4.5 24 0v-7" fill="none" stroke="#cffafe" stroke-width="3" stroke-linecap="round" />
+  <path d="M53 26v11" stroke="#ecfeff" stroke-width="2" stroke-linecap="round" />
+  <circle cx="53" cy="38.5" r="2.6" fill="#ecfeff" />
+</svg>
