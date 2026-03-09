@@ -3,8 +3,20 @@
     <!-- Header -->
     <div class="page-header">
       <h2 class="page-title">ผลการเรียน</h2>
-      <p class="page-sub">{{ profile.grade }} · {{ profile.classroom }}</p>
+      <p class="page-sub">{{ profile.grade }} · {{ profile.classroom }} · {{ termLabel }}</p>
     </div>
+
+    <div v-if="isLoading" class="empty-state">
+      <span class="empty-icon">⏳</span>
+      <p>กำลังโหลดข้อมูลผลการเรียน...</p>
+    </div>
+
+    <div v-else-if="accessDenied" class="empty-state empty-state--warn">
+      <span class="empty-icon">🔒</span>
+      <p>{{ errorMessage || 'ไม่มีสิทธิ์เข้าถึงข้อมูลผลการเรียน' }}</p>
+    </div>
+
+    <template v-else>
 
     <!-- Semester selector -->
     <div class="semester-select-wrap">
@@ -111,6 +123,7 @@
       <div class="status-row-note"><span class="note-chip note--ms">มส</span> มีเวลาเรียนไม่เพียงพอ (ต่ำกว่า 80%)</div>
       <div class="status-row-note"><span class="note-chip note--mp">มผ</span> ไม่ผ่านเกณฑ์การประเมิน</div>
     </div>
+    </template>
   </div>
 </template>
 
@@ -119,9 +132,11 @@ import { ref } from 'vue'
 import type { SubjectGrade } from '../../composables/useGradesData'
 import { useGradesData } from '../../composables/useGradesData'
 import { useStudentProfile } from '../../composables/useStudentProfile'
+import { useStudentHeaderInfo } from '../../composables/useStudentHeaderInfo'
 
 const { profile } = useStudentProfile()
-const { selectedSemesterId, semesters, currentGrades, completedGrades, gpa, totalCredits, gradeColor } = useGradesData()
+const { termLabel } = useStudentHeaderInfo()
+const { selectedSemesterId, semesters, currentGrades, completedGrades, gpa, totalCredits, gradeColor, isLoading, accessDenied, errorMessage } = useGradesData()
 
 const selectedSubject = ref<SubjectGrade | null>(null)
 
@@ -150,6 +165,29 @@ function statusClass(status: string): string {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.empty-state--warn {
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 16px;
+  color: #94a3b8;
+  background: #fff;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, .05);
+}
+
+.empty-icon {
+  font-size: 34px;
 }
 
 .page-title {

@@ -46,50 +46,79 @@ function toGrade(score: number | null): GradeValue {
 
 export function useGradesData() {
   const selectedSemesterId = ref('current')
+  const isLoading = ref(import.meta.client)
+  const accessDenied = ref(false)
+  const errorMessage = ref('')
 
   if (import.meta.client) {
     ensureStudentSession().then(async (session) => {
-      if (!session?.student) return
+      if (!session?.student) {
+        isLoading.value = false
+        return
+      }
 
       const token = useCookie<string | null>('edu_student_token')
-      if (!token.value) return
+      if (!token.value) {
+        isLoading.value = false
+        accessDenied.value = true
+        errorMessage.value = 'ไม่มีสิทธิ์เข้าถึงข้อมูลผลการเรียน'
+        return
+      }
       const config = useRuntimeConfig()
       const headers = { Authorization: `Bearer ${token.value}` }
 
-      const [gradeRecordsRes, gradeItemsRes] = await Promise.all([
-        $fetch<{ data: Array<{ id: string; grade_item_id: string; score: number | null }> }>(`${config.public.apiBase}/students/${session.student.id}/grade-records`, { headers }),
-        $fetch<{ data: Array<{ id: string; name: string | null; max_score: number | null }> }>(`${config.public.apiBase}/students/${session.student.id}/grade-items`, { headers }),
-      ])
+      try {
+        const [gradeRecordsRes, gradeItemsRes] = await Promise.all([
+          $fetch<{ data: Array<{ id: string; grade_item_id: string; score: number | null }> }>(`${config.public.apiBase}/students/${session.student.id}/grade-records`, { headers }),
+          $fetch<{ data: Array<{ id: string; name: string | null; max_score: number | null }> }>(`${config.public.apiBase}/students/${session.student.id}/grade-items`, { headers }),
+        ])
 
-      const itemByID: Record<string, { name: string | null; max_score: number | null }> = {}
-      for (const item of (gradeItemsRes.data || [])) {
-        itemByID[item.id] = { name: item.name, max_score: item.max_score }
-      }
-
-      gradesBySemester.value.current = (gradeRecordsRes.data || []).map((record, idx) => {
-        const gradeItem = itemByID[record.grade_item_id]
-        const score = record.score
-        const grade = toGrade(score)
-        const pass = typeof grade === 'number' ? grade >= 1 : false
-
-        return {
-          id: record.id,
-          subjectCode: `SUB-${idx + 1}`,
-          subjectName: gradeItem?.name?.trim() || `รายวิชา ${idx + 1}`,
-          credits: 1,
-          hours: 0,
-          midterm: null,
-          final: null,
-          attendance: null,
-          behavior: null,
-          total: score,
-          grade,
-          status: score === null ? 'รอผล' : (pass ? 'ผ่าน' : 'ไม่ผ่าน'),
-          teacher: '-',
+        const itemByID: Record<string, { name: string | null; max_score: number | null }> = {}
+        for (const item of (gradeItemsRes.data || [])) {
+          itemByID[item.id] = { name: item.name, max_score: item.max_score }
         }
-      })
+
+        gradesBySemester.value.current = (gradeRecordsRes.data || []).map((record, idx) => {
+          const gradeItem = itemByID[record.grade_item_id]
+          const score = record.score
+          const grade = toGrade(score)
+          const pass = typeof grade === 'number' ? grade >= 1 : false
+
+          return {
+            id: record.id,
+            subjectCode: `SUB-${idx + 1}`,
+            subjectName: gradeItem?.name?.trim() || `รายวิชา ${idx + 1}`,
+            credits: 1,
+            hours: 0,
+            midterm: null,
+            final: null,
+            attendance: null,
+            behavior: null,
+            total: score,
+            grade,
+            status: score === null ? 'รอผล' : (pass ? 'ผ่าน' : 'ไม่ผ่าน'),
+            teacher: '-',
+          }
+        })
+      }
+      catch (err: any) {
+        gradesBySemester.value.current = []
+        const code = Number(err?.statusCode || err?.status || 0)
+        if (code === 401 || code === 403) {
+          accessDenied.value = true
+          errorMessage.value = 'ไม่มีสิทธิ์เข้าถึงข้อมูลผลการเรียน'
+        }
+        else {
+          errorMessage.value = 'ไม่สามารถโหลดข้อมูลผลการเรียนได้'
+        }
+      }
+      finally {
+        isLoading.value = false
+      }
     }).catch(() => {
       gradesBySemester.value.current = []
+      isLoading.value = false
+      errorMessage.value = 'ไม่สามารถโหลดข้อมูลผลการเรียนได้'
     })
   }
 
@@ -132,5 +161,5 @@ export function useGradesData() {
     return '#94a3b8'
   }
 
-  return { selectedSemesterId, semesters, currentGrades, completedGrades, gpa, totalCredits, gradeColor }
+  return { selectedSemesterId, semesters, currentGrades, completedGrades, gpa, totalCredits, gradeColor, isLoading, accessDenied, errorMessage }
 }

@@ -7,8 +7,8 @@
         </svg>
       </div>
       <div class="topbar-info">
-        <span class="school-name">โรงเรียนตัวอย่างวิทยา</span>
-        <span class="term-label">ปีการศึกษา 2568 เทอม 1</span>
+        <span class="school-name">{{ schoolName }}</span>
+        <span class="term-label">{{ termLabel }}</span>
       </div>
     </div>
     <div class="topbar-right">
@@ -48,11 +48,13 @@
 import { computed, ref, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNotificationsData } from '../composables/useNotificationsData'
+import { useStudentHeaderInfo } from '../composables/useStudentHeaderInfo'
 
 const router = useRouter()
 const authToken = useCookie<string | null>('edu_student_token')
 const activeRole = useCookie<string | null>('edu_active_role')
 const { notifications } = useNotificationsData()
+const { schoolName, termLabel } = useStudentHeaderInfo()
 const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
 const showLogoutModal = ref(false)
 

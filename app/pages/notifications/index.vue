@@ -11,6 +11,18 @@
       </button>
     </div>
 
+    <div v-if="isLoading" class="empty-state">
+      <span class="empty-icon">⏳</span>
+      <p>กำลังโหลดการแจ้งเตือน...</p>
+    </div>
+
+    <div v-else-if="accessDenied" class="empty-state empty-state--warn">
+      <span class="empty-icon">🔒</span>
+      <p>{{ errorMessage || 'ไม่มีสิทธิ์เข้าถึงข้อมูลการแจ้งเตือน' }}</p>
+    </div>
+
+    <template v-else>
+
     <!-- Notification list -->
     <div class="notif-list">
       <div
@@ -38,6 +50,7 @@
         <p>ยังไม่มีการแจ้งเตือน</p>
       </div>
     </div>
+    </template>
   </div>
 </template>
 
@@ -47,7 +60,7 @@ import { useNotificationsData } from '../../composables/useNotificationsData'
 
 type NotifType = 'grade' | 'attendance' | 'announcement' | 'system' | 'document'
 
-const { notifications, markRead, markAllRead } = useNotificationsData()
+const { notifications, markRead, markAllRead, isLoading, accessDenied, errorMessage } = useNotificationsData()
 
 const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
 
@@ -80,6 +93,11 @@ function typeColor(type: NotifType): string {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.empty-state--warn {
+  border: 1px solid #fed7aa;
+  color: #9a3412;
 }
 
 .page-header {

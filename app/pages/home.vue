@@ -6,23 +6,23 @@
       <div class="welcome-info">
         <p class="welcome-greeting">สวัสดี 👋</p>
         <h2 class="welcome-name">{{ profile.prefixTh }}{{ profile.firstName }} {{ profile.lastName }}</h2>
-        <p class="welcome-class">{{ profile.classroom }} · เลขที่ {{ profile.classNumber }}</p>
+        <p class="welcome-class">{{ classroomDisplay }} · เลขที่ {{ profile.classNumber || '-' }}</p>
       </div>
     </div>
 
     <!-- Stats row -->
     <div class="stats-row">
       <NuxtLink to="/attendance" class="stat-card stat-card--blue">
-        <div class="stat-value">{{ attendancePercent }}%</div>
-        <div class="stat-label">เข้าเรียน</div>
+        <div class="stat-value">{{ attendanceDisplay }}</div>
+        <div class="stat-label">{{ attendanceLabel }}</div>
       </NuxtLink>
       <NuxtLink to="/grades" class="stat-card stat-card--green">
-        <div class="stat-value">{{ gpa ?? '-' }}</div>
-        <div class="stat-label">GPA ล่าสุด</div>
+        <div class="stat-value">{{ gpaDisplay }}</div>
+        <div class="stat-label">{{ gpaLabel }}</div>
       </NuxtLink>
       <NuxtLink to="/grades" class="stat-card stat-card--purple">
-        <div class="stat-value">{{ totalCredits }}</div>
-        <div class="stat-label">หน่วยกิต</div>
+        <div class="stat-value">{{ creditsDisplay }}</div>
+        <div class="stat-label">{{ creditsLabel }}</div>
       </NuxtLink>
     </div>
 
@@ -32,7 +32,15 @@
         <h3 class="section-title">ตารางเรียนวันนี้</h3>
         <NuxtLink to="/schedule" class="section-link">ดูทั้งหมด</NuxtLink>
       </div>
-      <div v-if="todaySchedule.periods.length === 0" class="empty-state">
+      <div v-if="scheduleLoading" class="section-state section-state--loading">
+        <span class="empty-icon">⏳</span>
+        <p>กำลังโหลดตารางเรียน...</p>
+      </div>
+      <div v-else-if="scheduleDenied" class="section-state section-state--denied">
+        <span class="empty-icon">🔒</span>
+        <p>ไม่มีสิทธิ์เข้าถึงข้อมูลตารางเรียน</p>
+      </div>
+      <div v-else-if="todaySchedule.periods.length === 0" class="empty-state">
         <span class="empty-icon">🎉</span>
         <p>ไม่มีคาบเรียนวันนี้</p>
       </div>
@@ -65,7 +73,19 @@
         <h3 class="section-title">ผลการเรียนล่าสุด</h3>
         <NuxtLink to="/grades" class="section-link">ดูทั้งหมด</NuxtLink>
       </div>
-      <div class="grade-list">
+      <div v-if="gradesLoading" class="section-state section-state--loading">
+        <span class="empty-icon">⏳</span>
+        <p>กำลังโหลดผลการเรียน...</p>
+      </div>
+      <div v-else-if="gradesDenied" class="section-state section-state--denied">
+        <span class="empty-icon">🔒</span>
+        <p>ไม่มีสิทธิ์เข้าถึงข้อมูลผลการเรียน</p>
+      </div>
+      <div v-else-if="recentGrades.length === 0" class="empty-state">
+        <span class="empty-icon">📚</span>
+        <p>ยังไม่มีผลการเรียนล่าสุด</p>
+      </div>
+      <div v-else class="grade-list">
         <div
           v-for="g in recentGrades"
           :key="g.id"
@@ -88,7 +108,19 @@
         <h3 class="section-title">ประกาศล่าสุด</h3>
         <NuxtLink to="/notifications" class="section-link">ดูทั้งหมด</NuxtLink>
       </div>
-      <div class="announcement-list">
+      <div v-if="notificationsLoading" class="section-state section-state--loading">
+        <span class="empty-icon">⏳</span>
+        <p>กำลังโหลดประกาศ...</p>
+      </div>
+      <div v-else-if="notificationsDenied" class="section-state section-state--denied">
+        <span class="empty-icon">🔒</span>
+        <p>ไม่มีสิทธิ์เข้าถึงข้อมูลประกาศ</p>
+      </div>
+      <div v-else-if="announcements.length === 0" class="empty-state">
+        <span class="empty-icon">📭</span>
+        <p>ยังไม่มีประกาศล่าสุด</p>
+      </div>
+      <div v-else class="announcement-list">
         <div
           v-for="notif in announcements"
           :key="notif.id"
@@ -141,26 +173,68 @@ import { useNotificationsData } from '../composables/useNotificationsData'
 
 const router = useRouter()
 const { profile } = useStudentProfile()
-const { schedule } = useScheduleData()
-const { currentGrades, gpa, totalCredits, gradeColor } = useGradesData()
-const { attendancePercent } = useAttendanceData()
-const { notifications } = useNotificationsData()
+const { schedule, isLoading: scheduleLoading, accessDenied: scheduleDenied } = useScheduleData()
+const { currentGrades, gpa, totalCredits, gradeColor, isLoading: gradesLoading, accessDenied: gradesDenied } = useGradesData()
+const { attendancePercent, isLoading: attendanceLoading, accessDenied: attendanceDenied } = useAttendanceData()
+const { notifications, isLoading: notificationsLoading, accessDenied: notificationsDenied } = useNotificationsData()
 
-// Today's schedule (show Wednesday as demo)
+// Today's schedule from real API-backed schedule data
 const dayMap: Record<number, string> = { 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri' }
 const todayDow = new Date().getDay()
-const todayKey = dayMap[todayDow] ?? 'Wed'
+const todayKey = dayMap[todayDow] ?? 'Mon'
 const todaySchedule = computed(() =>
-  schedule.value.find(d => d.day === todayKey) ?? schedule.value[2]
+  schedule.value.find(d => d.day === todayKey) ?? { day: todayKey, dayTh: '', periods: [] }
 )
 
 const recentGrades = computed(() =>
   currentGrades.value.filter(g => g.grade !== '-').slice(0, 4)
 )
 
+const attendanceDisplay = computed(() => {
+  if (attendanceLoading.value) return '...'
+  if (attendanceDenied.value) return '🔒'
+  return `${attendancePercent.value}%`
+})
+
+const attendanceLabel = computed(() => {
+  if (attendanceLoading.value) return 'กำลังโหลด'
+  if (attendanceDenied.value) return 'ไม่มีสิทธิ์'
+  return 'เข้าเรียน'
+})
+
+const gpaDisplay = computed(() => {
+  if (gradesLoading.value) return '...'
+  if (gradesDenied.value) return '🔒'
+  return gpa.value ?? '-'
+})
+
+const gpaLabel = computed(() => {
+  if (gradesLoading.value) return 'กำลังโหลด'
+  if (gradesDenied.value) return 'ไม่มีสิทธิ์'
+  return 'GPA ล่าสุด'
+})
+
+const creditsDisplay = computed(() => {
+  if (gradesLoading.value) return '...'
+  if (gradesDenied.value) return '🔒'
+  return String(totalCredits.value)
+})
+
+const creditsLabel = computed(() => {
+  if (gradesLoading.value) return 'กำลังโหลด'
+  if (gradesDenied.value) return 'ไม่มีสิทธิ์'
+  return 'หน่วยกิต'
+})
+
 const announcements = computed(() =>
   notifications.value.filter(n => n.type === 'announcement' || n.type === 'grade').slice(0, 3)
 )
+
+const classroomDisplay = computed(() => {
+  const value = (profile.value.classroom || '').trim()
+  if (!value || value === '-') return 'ห้องเรียนไม่ระบุ'
+  return value
+})
 
 function periodBorderColor(subject: string): string {
   if (subject.includes('คณิต')) return '#2563eb'
@@ -290,6 +364,28 @@ function goToNotification(id: string) {
   font-size: 12px;
   color: #2563eb;
   font-weight: 600;
+}
+
+.section-state {
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.05);
+}
+
+.section-state--loading {
+  background: #f8fafc;
+  color: #475569;
+}
+
+.section-state--denied {
+  background: #fff7ed;
+  color: #9a3412;
 }
 
 /* Today periods */

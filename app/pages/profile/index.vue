@@ -10,8 +10,8 @@
             </svg>
           </div>
           <div>
-            <div class="id-school">โรงเรียนตัวอย่างวิทยา</div>
-            <div class="id-year">ปีการศึกษา {{ profile.academicYear }}</div>
+            <div class="id-school">{{ schoolName }}</div>
+            <div class="id-year">{{ termLabel }}</div>
           </div>
         </div>
         <div class="id-badge-status">{{ profile.status }}</div>
@@ -186,13 +186,16 @@ import { computed } from 'vue'
 import { useStudentProfile } from '../../composables/useStudentProfile'
 import { useGradesData } from '../../composables/useGradesData'
 import { useAttendanceData } from '../../composables/useAttendanceData'
+import { useStudentHeaderInfo } from '../../composables/useStudentHeaderInfo'
 
 const { profile } = useStudentProfile()
 const { gpa, totalCredits } = useGradesData()
 const { attendancePercent } = useAttendanceData()
+const { schoolName, termLabel } = useStudentHeaderInfo()
 
 const maskedIdCard = computed(() => {
   const v = profile.value.idCard.replace(/-/g, '')
+  if (v.length < 2) return '-'
   return v.slice(0, 1) + '-XXXX-XXXXX-XX-' + v.slice(-1)
 })
 </script>

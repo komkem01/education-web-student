@@ -3,8 +3,20 @@
     <!-- Header -->
     <div class="page-header">
       <h2 class="page-title">ตารางเรียน</h2>
-      <p class="page-sub">{{ profile.grade }} · {{ profile.classroom }} · ปีการศึกษา {{ profile.academicYear }}</p>
+      <p class="page-sub">{{ profile.grade }} · {{ profile.classroom }} · {{ termLabel }}</p>
     </div>
+
+    <div v-if="isLoading" class="empty-state">
+      <span class="empty-icon">⏳</span>
+      <p>กำลังโหลดตารางเรียน...</p>
+    </div>
+
+    <div v-else-if="accessDenied" class="empty-state empty-state--warn">
+      <span class="empty-icon">🔒</span>
+      <p>{{ errorMessage || 'ไม่มีสิทธิ์เข้าถึงข้อมูลตารางเรียน' }}</p>
+    </div>
+
+    <template v-else>
 
     <!-- Day selector -->
     <div class="day-tabs-wrap">
@@ -73,6 +85,7 @@
     <div v-if="currentDay?.periods.length" class="period-summary">
       {{ currentDay.periods.length }} คาบ · {{ totalPeriodMinutes }} นาที
     </div>
+    </template>
   </div>
 </template>
 
@@ -80,9 +93,11 @@
 import { ref, computed } from 'vue'
 import { useStudentProfile } from '../../composables/useStudentProfile'
 import { useScheduleData } from '../../composables/useScheduleData'
+import { useStudentHeaderInfo } from '../../composables/useStudentHeaderInfo'
 
 const { profile } = useStudentProfile()
-const { schedule } = useScheduleData()
+const { termLabel } = useStudentHeaderInfo()
+const { schedule, isLoading, accessDenied, errorMessage } = useScheduleData()
 
 const dayMap: Record<number, string> = { 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri' }
 const todayDow = new Date().getDay()
@@ -133,6 +148,11 @@ const totalPeriodMinutes = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.empty-state--warn {
+  border: 1px solid #fed7aa;
+  color: #9a3412;
 }
 
 .page-header { margin-bottom: 2px; }

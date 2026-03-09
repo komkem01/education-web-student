@@ -12,29 +12,11 @@ export interface AttendanceRecord {
   note?: string
 }
 
-function buildMonth(year: number, month: number): AttendanceRecord[] {
-  const days: AttendanceRecord[] = []
-  const dayNames = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
-  const daysInMonth = new Date(year, month, 0).getDate()
-  const statuses: AttendanceStatus[] = ['มา', 'มา', 'มา', 'มา', 'มา', 'มา', 'มา', 'มา', 'มา', 'มา', 'สาย', 'มา', 'มา', 'ลา', 'มา']
-  let si = 0
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateObj = new Date(year, month - 1, d)
-    const dow = dateObj.getDay()
-    if (dow === 0 || dow === 6) continue // skip weekends
-    const status = statuses[si % statuses.length]
-    si++
-    days.push({
-      date: `${d.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year + 543}`,
-      dayTh: dayNames[dow],
-      status,
-    })
-  }
-  return days
-}
-
 export function useAttendanceData() {
   const records = ref<AttendanceRecord[]>([])
+  const isLoading = ref(import.meta.client)
+  const accessDenied = ref(false)
+  const errorMessage = ref('')
 
   const dayNames = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
 
@@ -55,31 +37,54 @@ export function useAttendanceData() {
 
   if (import.meta.client) {
     ensureStudentSession().then(async (session) => {
-      if (!session?.student) return
+      if (!session?.student) {
+        isLoading.value = false
+        return
+      }
       const token = useCookie<string | null>('edu_student_token')
-      if (!token.value) return
+      if (!token.value) {
+        isLoading.value = false
+        accessDenied.value = true
+        errorMessage.value = 'ไม่มีสิทธิ์เข้าถึงข้อมูลการเข้าเรียน'
+        return
+      }
       const config = useRuntimeConfig()
 
-      const res = await $fetch<{ data: Array<{ id: string; check_date: string | null; created_at: string; status: string; note: string | null }> }>(
-        `${config.public.apiBase}/students/${session.student.id}/attendance-logs`,
-        { headers: { Authorization: `Bearer ${token.value}` } },
-      )
+      try {
+        const res = await $fetch<{ data: Array<{ id: string; check_date: string | null; created_at: string; status: string; note: string | null }> }>(
+          `${config.public.apiBase}/students/${session.student.id}/attendance-logs`,
+          { headers: { Authorization: `Bearer ${token.value}` } },
+        )
 
-      records.value = (res.data || []).map((item) => {
-        const baseDate = item.check_date ? new Date(item.check_date) : new Date(item.created_at)
-        return {
-          id: item.id,
-          date: toThaiDate(baseDate),
-          dayTh: dayNames[baseDate.getDay()] || '-',
-          status: toThaiStatus(item.status),
-          note: item.note || undefined,
+        records.value = (res.data || []).map((item) => {
+          const baseDate = item.check_date ? new Date(item.check_date) : new Date(item.created_at)
+          return {
+            id: item.id,
+            date: toThaiDate(baseDate),
+            dayTh: dayNames[baseDate.getDay()] || '-',
+            status: toThaiStatus(item.status),
+            note: item.note || undefined,
+          }
+        })
+      }
+      catch (err: any) {
+        records.value = []
+        const code = Number(err?.statusCode || err?.status || 0)
+        if (code === 401 || code === 403) {
+          accessDenied.value = true
+          errorMessage.value = 'ไม่มีสิทธิ์เข้าถึงข้อมูลการเข้าเรียน'
         }
-      })
+        else {
+          errorMessage.value = 'ไม่สามารถโหลดข้อมูลการเข้าเรียนได้'
+        }
+      }
+      finally {
+        isLoading.value = false
+      }
     }).catch(() => {
-      records.value = [
-        ...buildMonth(2025, 5),
-        ...buildMonth(2025, 6),
-      ]
+      records.value = []
+      isLoading.value = false
+      errorMessage.value = 'ไม่สามารถโหลดข้อมูลการเข้าเรียนได้'
     })
   }
 
@@ -110,5 +115,5 @@ export function useAttendanceData() {
     return '#f1f5f9'
   }
 
-  return { records, totalDays, presentDays, lateDays, absentDays, leaveDays, attendancePercent, statusColor, statusBg }
+  return { records, totalDays, presentDays, lateDays, absentDays, leaveDays, attendancePercent, statusColor, statusBg, isLoading, accessDenied, errorMessage }
 }

@@ -12,6 +12,7 @@ type MeResponse = {
 type StudentItem = {
   id: string
   member_id: string
+  prefix_id: string | null
   student_code: string | null
   first_name: string | null
   last_name: string | null

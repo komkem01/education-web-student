@@ -3,8 +3,20 @@
     <!-- Header -->
     <div class="page-header">
       <h2 class="page-title">การเข้าเรียน</h2>
-      <p class="page-sub">{{ profile.grade }} · ปีการศึกษา {{ profile.academicYear }} เทอม 1</p>
+      <p class="page-sub">{{ profile.grade }} · {{ termLabel }}</p>
     </div>
+
+    <div v-if="isLoading" class="empty-state">
+      <span>⏳</span>
+      <p>กำลังโหลดข้อมูลการเข้าเรียน...</p>
+    </div>
+
+    <div v-else-if="accessDenied" class="empty-state empty-state--warn">
+      <span>🔒</span>
+      <p>{{ errorMessage || 'ไม่มีสิทธิ์เข้าถึงข้อมูลการเข้าเรียน' }}</p>
+    </div>
+
+    <template v-else>
 
     <!-- Summary cards -->
     <div class="summary-row">
@@ -95,6 +107,7 @@
         </div>
       </div>
     </section>
+    </template>
   </div>
 </template>
 
@@ -102,9 +115,11 @@
 import { ref, computed } from 'vue'
 import { useStudentProfile } from '../../composables/useStudentProfile'
 import { useAttendanceData } from '../../composables/useAttendanceData'
+import { useStudentHeaderInfo } from '../../composables/useStudentHeaderInfo'
 
 const { profile } = useStudentProfile()
-const { records, presentDays, lateDays, absentDays, leaveDays, attendancePercent, statusColor, statusBg } = useAttendanceData()
+const { termLabel } = useStudentHeaderInfo()
+const { records, presentDays, lateDays, absentDays, leaveDays, attendancePercent, statusColor, statusBg, isLoading, accessDenied, errorMessage } = useAttendanceData()
 
 const activeFilter = ref('all')
 
@@ -134,6 +149,11 @@ function monthAbbr(dateStr: string): string {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.empty-state--warn {
+  border: 1px solid #fed7aa;
+  color: #9a3412;
 }
 
 .page-title {
