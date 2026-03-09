@@ -53,6 +53,7 @@ import { useStudentHeaderInfo } from '../composables/useStudentHeaderInfo'
 const router = useRouter()
 const authToken = useCookie<string | null>('edu_student_token')
 const activeRole = useCookie<string | null>('edu_active_role')
+const studentEmail = useCookie<string | null>('edu_student_email')
 const { notifications } = useNotificationsData()
 const { schoolName, termLabel } = useStudentHeaderInfo()
 const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
@@ -65,6 +66,7 @@ function closeLogoutModal() {
 function confirmLogout() {
   authToken.value = null
   activeRole.value = null
+  studentEmail.value = null
   closeLogoutModal()
   router.push('/login')
 }

@@ -12,16 +12,32 @@ type MeResponse = {
 type StudentItem = {
   id: string
   member_id: string
+  created_at?: string | null
+  gender_id: string | null
   prefix_id: string | null
   student_code: string | null
   first_name: string | null
   last_name: string | null
+  nick_name: string | null
+  dob: string | null
+  blood_type: string | null
+  religion: string | null
+  nationality: string | null
   current_classroom_id: string | null
   default_student_no: number | null
   is_active: boolean
   advisor_teacher_id: string | null
   phone: string | null
   citizen_id: string | null
+  email?: string | null
+  addresses?: Array<{
+    id: string
+    member_id: string
+    label: string | null
+    address_line: string | null
+    is_primary: boolean
+    sort_order: number
+  }>
 }
 
 export type StudentSession = {

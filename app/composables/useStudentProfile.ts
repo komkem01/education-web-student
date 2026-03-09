@@ -8,6 +8,11 @@ type PrefixItem = {
   name_th: string | null
 }
 
+type GenderItem = {
+  id: string
+  name: string
+}
+
 type ClassroomItem = {
   id: string
   name: string
@@ -47,8 +52,53 @@ type AcademicYearItem = {
   term: string
 }
 
+type MemberAddressItem = {
+  label: string | null
+  address_line: string | null
+  is_primary: boolean
+  sort_order: number
+}
+
 function looksLikeUUID(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+}
+
+function toThaiDateLabel(raw: string | null | undefined): string {
+  if (!raw) return '-'
+  const d = new Date(raw)
+  if (Number.isNaN(d.getTime())) return '-'
+  return d.toLocaleDateString('th-TH')
+}
+
+function toThaiDateTimeLabel(raw: string | null | undefined): string {
+  if (!raw) return '-'
+  const d = new Date(raw)
+  if (Number.isNaN(d.getTime())) return '-'
+
+  const date = d.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok' })
+  const time = d.toLocaleTimeString('th-TH', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'Asia/Bangkok',
+  })
+  return `${date} ${time} น.`
+}
+
+function toContactAddressLabel(addresses: MemberAddressItem[] | null | undefined): string {
+  if (!addresses || addresses.length === 0) return '-'
+
+  const rows = [...addresses]
+    .filter(item => (item.address_line || '').trim().length > 0)
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+  if (rows.length === 0) return '-'
+
+  const primary = rows.find(item => item.is_primary) || rows[0]
+  const addressLine = (primary.address_line || '').trim()
+  if (!addressLine) return '-'
+
+  const label = (primary.label || '').trim()
+  return label ? `${label}: ${addressLine}` : addressLine
 }
 
 export interface StudentProfile {
@@ -120,6 +170,7 @@ export function useStudentProfile() {
       if (!session || !session.student) return
       const student = session.student
       const token = useCookie<string | null>('edu_student_token')
+      const studentEmail = useCookie<string | null>('edu_student_email')
       const config = useRuntimeConfig()
 
       const headers = token.value ? { Authorization: `Bearer ${token.value}` } : undefined
@@ -148,6 +199,17 @@ export function useStudentProfile() {
       }
 
       if (looksLikeUUID(classroomLabel)) classroomLabel = '-'
+
+      let genderLabel = '-'
+      if (student.gender_id && headers) {
+        try {
+          const genderRes = await $fetch<BaseResponse<GenderItem>>(`${config.public.apiBase}/students-meta/genders/${student.gender_id}`, { headers })
+          genderLabel = genderRes.data?.name?.trim() || '-'
+        }
+        catch {
+          genderLabel = '-'
+        }
+      }
 
       let gradeLabel = '-'
       if (student.current_classroom_id && headers) {
@@ -240,8 +302,15 @@ export function useStudentProfile() {
         prefixTh,
         firstName: student.first_name?.trim() || '-',
         lastName: student.last_name?.trim() || '',
-        email: '-',
+        nickName: student.nick_name?.trim() || '-',
+        dob: toThaiDateLabel(student.dob),
+        gender: genderLabel,
+        bloodType: student.blood_type?.trim() || '-',
+        religion: student.religion?.trim() || '-',
+        nationality: student.nationality?.trim() || '-',
+        email: student.email?.trim() || studentEmail.value?.trim() || '-',
         phone: student.phone?.trim() || '-',
+        address: toContactAddressLabel(student.addresses),
         idCard: student.citizen_id?.trim() || '-',
         grade: gradeLabel,
         classroom: classroomLabel,
@@ -249,6 +318,7 @@ export function useStudentProfile() {
         academicYear: academicYearLabel,
         advisorName,
         status: student.is_active ? 'กำลังศึกษา' : 'ไม่ใช้งาน',
+        enrollDate: toThaiDateTimeLabel(student.created_at),
         fatherName,
         fatherPhone,
         motherName,

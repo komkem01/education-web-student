@@ -114,6 +114,7 @@ definePageMeta({ layout: 'default' })
 
 const authToken = useCookie<string | null>('edu_student_token')
 const activeRole = useCookie<string | null>('edu_active_role')
+const studentEmail = useCookie<string | null>('edu_student_email')
 const showPassword = ref(false)
 const loading = ref(false)
 const errorMsg = ref('')
@@ -160,6 +161,7 @@ async function handleLogin() {
 
     authToken.value = accessToken
     activeRole.value = 'student'
+    studentEmail.value = form.email.trim().toLowerCase()
     await navigateTo('/home')
   }
   catch (err: any) {
